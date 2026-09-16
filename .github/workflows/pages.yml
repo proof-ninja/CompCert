@@ -1,0 +1,79 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches:
+      - 'rocqnavi'
+  workflow_dispatch:
+
+# Allow the workflow to deploy to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skip queued runs but let in-progress ones finish
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      target: x86_64
+      os: linux
+      jobs: 4
+      opamroot: /home/rocq/.opam
+      configopts: -ignore-coq-version
+    container:
+      image: rocq/rocq-prover:latest
+      options: --user root
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: OS dependencies
+        run: |
+          apt-get update
+          apt-get install -y graphviz
+
+      - name: OPAM dependencies
+        run: |
+          opam repo add rocq-released https://rocq-prover.org/opam/released --set-default 2>/dev/null || true
+          tools/runner.sh opam_install rocq-navi menhir
+
+      - name: Configure
+        run: tools/runner.sh configure
+
+      - name: Build proofs
+        run: tools/runner.sh build_ccomp
+
+      - name: Generate HTML documentation
+        run: |
+          export OPAMROOT="$opamroot"
+          eval `opam env --safe`
+          mkdir -p html
+          make html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

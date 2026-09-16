@@ -87,3 +87,5 @@
 .csdp.cache
 # Build auxiliaries
 /build
+
+html/

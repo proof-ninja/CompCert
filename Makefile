@@ -498,3 +498,24 @@ build-all: $(ALL_BUILDS)
 -include .depend
 
 FORCE:
+
+# Html documentation ---------------------
+DOCDIR=html
+
+GIT_HASH := $(shell git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)
+
+TIMESTAMP=$(shell date +%Y.%m.%d-%H:%M)
+
+GITHUB_URL="https://github.com/proof-ninja/CompCert/tree/$(shell git rev-parse HEAD)"
+
+html: .depend
+	find . -name "*.v" -or -name "*.glob" | grep -v "/\." | grep -v "_opam/" | xargs rocqnavi \
+	-title "CompCert $(GIT_HASH) $(TIMESTAMP)" \
+	-d $(DOCDIR) \
+	-debug \
+	-Q . compcert \
+	-coqlib https://rocq-prover.org/doc/V9.1.0/stdlib/ \
+	-file-graph-from-depend .depend \
+	-doc-source-url $(GITHUB_URL)
+
+.PHONY: html
